@@ -18,6 +18,18 @@ E.g.:
 This is critical if you are using frameworks like NestJS that already come with their own watcher through the nest CLI.
 It is especially annoying as it will also append "--inspect=..." automatically and Nest for example will throw an error as it doesn't know the --inspect parameter.
 
+## Build
+````shell script
+cd 12
+
+docker build -t fhthiemo/s2i-nodejs-container:centos7-nodejs-12 .
+````
+
+## Deploy
+````shell script
+docker push fhthiemo/s2i-nodejs-container:centos7-nodejs-12
+````
+
 
 NodeJS container images
 ====================
