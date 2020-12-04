@@ -60,6 +60,13 @@ RUN yum install -y centos-release-scl-rh && \
     rpm -V $INSTALL_PKGS && \
     yum -y clean all --enablerepo='*'
 
+# Install yarn as an alternative to npm
+RUN npm i -g yarn
+
+# Enable prepending the node path automatically to avoid errors after build process
+RUN npm config set scripts-prepend-node-path auto && \
+    yarn config set scripts-prepend-node-path auto
+
 # Copy the S2I scripts from the specific language image to $STI_SCRIPTS_PATH
 COPY ./s2i/bin/ $STI_SCRIPTS_PATH
 

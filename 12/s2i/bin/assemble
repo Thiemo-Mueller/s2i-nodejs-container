@@ -26,6 +26,18 @@ safeLogging () {
     fi
 }
 
+if [[ "$YARN_ENABLED" == "true" ]]; then
+    echo "---> Using yarn over npm"
+fi
+
+yarnOrNpm() {
+    if [[ "$YARN_ENABLED" == "true" ]]; then
+        yarn "$@"
+    else
+        npm "$@"
+    fi
+}
+
 shopt -s dotglob
 if [ -d /tmp/artifacts ] && [ "$(ls /tmp/artifacts/ 2>/dev/null)" ]; then
     echo "---> Restoring previous build artifacts ..."
@@ -40,27 +52,27 @@ fix-permissions ./
 
 if [ ! -z $HTTP_PROXY ]; then
     echo "---> Setting npm http proxy to" $(safeLogging $HTTP_PROXY)
-	npm config set proxy $HTTP_PROXY
+	yarnOrNpm config set proxy $HTTP_PROXY
 fi
 
 if [ ! -z $http_proxy ]; then
     echo "---> Setting npm http proxy to" $(safeLogging $http_proxy)
-	npm config set proxy $http_proxy
+	yarnOrNpm config set proxy $http_proxy
 fi
 
 if [ ! -z $HTTPS_PROXY ]; then
     echo "---> Setting npm https proxy to" $(safeLogging $HTTPS_PROXY)
-	npm config set https-proxy $HTTPS_PROXY
+	yarnOrNpm config set https-proxy $HTTPS_PROXY
 fi
 
 if [ ! -z $https_proxy ]; then
     echo "---> Setting npm https proxy to" $(safeLogging $https_proxy)
-	npm config set https-proxy $https_proxy
+	yarnOrNpm config set https-proxy $https_proxy
 fi
 
 # Change the npm registry mirror if provided
 if [ -n "$NPM_MIRROR" ]; then
-	npm config set registry $NPM_MIRROR
+	yarnOrNpm config set registry $NPM_MIRROR
 fi
 
 # Set the DEV_MODE to false by default.
@@ -81,12 +93,44 @@ fi
 if [ "$NODE_ENV" != "production" ]; then
 
 	echo "---> Building your Node application from source"
-	npm install
+	yarnOrNpm install
+
+# Yarn and NPM build scripts are too different, so we don't use the yarnOrNpm below.
+elif [[ "$YARN_ENABLED" == "true" ]]; then
+
+    echo "---> Installing all dependencies"
+	NODE_ENV=development yarn --frozen-lockfile --development
+
+	#do not fail when there is no build script
+	# Stone age approach as yarn refuses to add --if-present flag to `yarn run`
+	# See https://github.com/yarnpkg/yarn/pull/7159
+    CAN_BUILD=$(npm run | grep "^  build$")
+    if [[ -z "$CAN_BUILD" ]]; then
+        echo "---> No building script defined"
+    else
+	    echo "---> Building in production mode"
+	    yarn run build
+    fi
+
+	echo "---> Pruning the development dependencies"
+	# Yes, another yarn refusal. It's only a party if the package managers mix.
+	# See https://github.com/yarnpkg/yarn/issues/6373
+	npm prune --production
+
+	# Clear the yarn's cache and tmp directories only if they are not a docker volumes
+	YARN_CACHE=$(yarn cache dir)
+	if ! mountpoint $YARN_CACHE; then
+		echo "---> Cleaning the yarn cache $YARN_CACHE"
+		yarn cache clean
+	fi
+
+	# You could use the following to clean yarn tmp files:
+	#find /tmp/ -name "yarn*" -type d -exec rm -rf {} \; > /dev/null
 
 else
 
 	echo "---> Installing all dependencies"
-	NODE_ENV=development npm install
+	NODE_ENV=development npm ci
 
 	#do not fail when there is no build script
 	echo "---> Building in production mode"

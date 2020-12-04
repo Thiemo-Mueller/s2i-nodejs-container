@@ -1,3 +1,24 @@
+# Fork notes
+
+**Only for NodeJS v12 on CentOS7.**
+
+Using yarn instead of npm if YARN_ENABLED is set.
+
+Won't run nodemon. Instead, you can do whatever you want to start the app in your package.json file (so less restrictive & opinionated).
+E.g.:
+```json
+{
+  "scripts": {
+    "start": "npm run start:$NODE_ENV",
+    "start:development": "nodemon if you like it",
+    "start:production": "node dist or whatever you fancy"
+  }
+}
+```
+This is critical if you are using frameworks like NestJS that already come with their own watcher through the nest CLI.
+It is especially annoying as it will also append "--inspect=..." automatically and Nest for example will throw an error as it doesn't know the --inspect parameter.
+
+
 NodeJS container images
 ====================
 
